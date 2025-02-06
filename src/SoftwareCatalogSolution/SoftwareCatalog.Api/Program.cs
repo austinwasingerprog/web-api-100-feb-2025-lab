@@ -1,7 +1,9 @@
 using FluentValidation;
 using Marten;
 using MicroElements.Swashbuckle.FluentValidation.AspNetCore;
+using Microsoft.OpenApi.Models;
 using SoftwareCatalog.Api.Catalog;
+using SoftwareCatalog.Api.Techs;
 using SoftwareCatalog.Api.Vendors;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -14,7 +16,33 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header with bearer token",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Scheme = "Bearer"
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Id = "Bearer",
+                    Type = ReferenceType.SecurityScheme
+                },
+                Scheme = "oauth2",
+                Name = "Bearer ",
+                In = ParameterLocation.Header
+            },
+            []
+        }
+    });
+});
 // Above this line is configuring the "internals" of our API Project.
 
 // This is saying use the "System" time provider, anywhere we need an instance of the TimeProvider
@@ -22,6 +50,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IValidator<CatalogItemRequestModel>, CatalogItemRequestModelValidator>();
 
 builder.Services.AddVendors();
+builder.Services.AddTechServices();
 builder.Services.AddSingleton<TimeProvider>((_) => TimeProvider.System);
 
 var connectionString = builder.Configuration.GetConnectionString("database")
@@ -49,7 +78,8 @@ app.UseAuthorization();
 app.MapControllers(); // this will scan your entire project for any controllers, use the attributes (HttpGet, etc.) to create
 // a "route table" - like a phone book. Reflection (the ability to have code look at itself)
 
-  app.MapVendors();
+app.MapVendors();
+app.MapTechs();
 app.Run(); // a blocking infinite for loop.
 
 // I will explain this later if you:
